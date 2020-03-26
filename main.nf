@@ -8,44 +8,35 @@
  https://github.com/BU-ISCIII/SARS_Cov2-nf
  @#### Authors
  Sarai Varona <s.varona@isciii.es>
+ Sara Monzon <smonzon@isciii.es>
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
 Pipeline overview:
  - 1. : Preprocessing
  	- 1.1: FastQC - for raw sequencing reads quality control
  	- 1.2: Trimmomatic - raw sequence trimming
- - 2. : Mapping
- 	- 2.1 : BWA - Mapping to host and reference viral genome
- 	- 2.2 : Samtools - SAM and BAM files processing and stats
-  - 2.3 : Picard - Mapping stats
-  - 2.4 : iVar - Remove primers by coordinates.
- - 3. : Variant calling, annotation and consensus:
- 	- 3.1 : VarScan - Variant calling
-  - 3.2 : SnpEff - Variant Annotation
-  - 3.3 : Bgzip - Variant calling vcf file compression
-  - 3.4 : Bcftools - Consensus genome
- - 4. : DeNovo assembly:
-  - 4.1 : Spades - De Novo assembly (normal mode and metaSpades mode)
-  - 4.2 : Unicycler - De novo assembly
-  - 4.3 : Quast - Assembly quality assessment.
-  - 4.4 : ABACAS - Assembly contig reordering and draft generation
- - 5. : Assembly Alignment
-  - 5.1 : BLAST - Assembly alignment to viral reference
- - 6. Stats & Graphs :
-  - 6.1 : PlasmidID - Assembly plot generation
+ - 2. : DeNovo assembly:
+  - 2.1 : Spades - De Novo assembly (normal mode and metaSpades mode)
+  - 2.2 : Unicycler - De novo assembly
+  - 2.3 : Quast - Assembly quality assessment.
+  - 2.4 : ABACAS - Assembly contig reordering and draft generation
+ - 3. : Assembly Alignment
+  - 3.1 : BLAST - Assembly alignment to viral reference
+ - 4. Stats & Graphs :
+  - 4.1 : PlasmidID - Assembly plot generation
  ----------------------------------------------------------------------------------------
 */
 
 def helpMessage() {
     log.info"""
     =========================================
-     BU-ISCIII/SARS_Cov2-nf : SARS_Cov2 Illumina SISPA data analysis v${version}
+     BU-ISCIII/SARS_Cov2_assembly-nf : SARS_Cov2 Illumina data analysis using assembly v${version}
     =========================================
     Usage:
 
     The typical command for running the pipeline is as follows:
 
-    nextflow run SARS_Cov2-nf/main.nf --reads '*_R{1,2}.fastq.gz' --viral_fasta ../../REFERENCES/NC_045512.2.fasta --viral_gff ../../REFERENCES/NC_045512.2.gff --viral_index '../REFERENCES/NC_045512.2.fasta.*' --blast_db '../REFERENCES/NC_045512.2.fasta.*' --host_fasta --host_fasta /processing_Data/bioinformatics/references/eukaria/homo_sapiens/hg38/UCSC/genome/hg38.fullAnalysisSet.fa --host_index '/processing_Data/bioinformatics/references/eukaria/homo_sapiens/hg38/UCSC/genome/hg38.fullAnalysisSet.fa.*' --amplicons_file ../REFERENCES/nCoV-2019.schemeMod.bed --outdir ./ -profile hpc_isciii
+    nextflow run SARS_Cov2_assembly-nf/main.nf --reads '*_R{1,2}.fastq.gz' --viral_fasta ../../REFERENCES/NC_045512.2.fasta --viral_gff ../../REFERENCES/NC_045512.2.gff --viral_index '../REFERENCES/NC_045512.2.fasta.*' --blast_db '../REFERENCES/NC_045512.2.fasta.*' --host_fasta --host_fasta /processing_Data/bioinformatics/references/eukaria/homo_sapiens/hg38/UCSC/genome/hg38.fullAnalysisSet.fa --host_index '/processing_Data/bioinformatics/references/eukaria/homo_sapiens/hg38/UCSC/genome/hg38.fullAnalysisSet.fa.*' --amplicons_file ../REFERENCES/nCoV-2019.schemeMod.fasta --outdir ./ -profile hpc_isciii
 
     Mandatory arguments:
       --reads                       Path to input data (must be surrounded with quotes).
@@ -58,7 +49,7 @@ def helpMessage() {
 
     Options:
       --singleEnd                   Specifies that the input is single end reads
-      --amplicons_file              Path to amplicons BED file.
+      --amplicons_file              Path to amplicons FASTA file.
 
     Trimming options
       --notrim                      Specifying --notrim will skip the adapter trimming step.
@@ -121,7 +112,7 @@ if( params.viral_gff ){
     if( !gff_file.exists() ) exit 1, "GFF file not found: ${params.viral_gff}."
 }
 
-blast_header = file("$baseDir/assets/header")
+blast_header = file("$baseDir/assets/header_blast.txt")
 
 // Output md template location
 output_docs = file("$baseDir/docs/output.md")
@@ -224,7 +215,7 @@ log.info "===================================="
 
 // Check that Nextflow version is up to date enough
 // try / throw / catch works for NF versions < 0.25 when this was implemented
-nf_required_version = '0.25.0'
+nf_required_version = '0.27.6'
 try {
     if( ! nextflow.version.matches(">= $nf_required_version") ){
         throw GroovyException('Nextflow version too old')
@@ -242,6 +233,7 @@ try {
  */
 process fastqc {
 	tag "$prefix"
+	label "small"
 	publishDir "${params.outdir}/01-fastQC", mode: 'copy',
 		saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
@@ -256,7 +248,7 @@ process fastqc {
 
 	prefix = name - ~/(_S[0-9]{2})?(_L00[1-9])?(.R1)?(_1)?(_R1)?(_trimmed)?(_val_1)?(_00*)?(\.fq)?(\.fastq)?(\.gz)?$/
 	"""
-	fastqc -t 1 $reads
+	fastqc -t ${task.cpus} -dir ${NXF_TEMP} $reads
 	"""
 }
 
@@ -322,7 +314,7 @@ process mapping_host {
 	script:
 	prefix = readsR1.toString() - '_paired_R1.fastq.gz'
 	"""
-	bwa mem -t 10 $refhost $readsR1 $readsR2 > $prefix".sam"
+	bwa mem -t ${task.cpus} $refhost $readsR1 $readsR2 > $prefix".sam"
   samtools view -b $prefix".sam" > $prefix".bam"
   samtools sort -o $prefix"_sorted.bam" -O bam -T $prefix $prefix".bam"
   samtools index $prefix"_sorted.bam"

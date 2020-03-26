@@ -258,6 +258,7 @@ process fastqc {
  * STEPS 1.2 Trimming
  */
 process trimming {
+	label "small"
 	tag "$prefix"
 	publishDir "${params.outdir}/02-preprocessing", mode: 'copy',
 		saveAs: {filename ->

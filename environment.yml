@@ -8,24 +8,24 @@ channels:
   - defaults
 dependencies:
   ## Common
-  - fastqc=0.11.8
-  - trimmomatic=0.38
-  - bowtie2=2.3.5
+  - fastqc
+  - trimmomatic
+  - bowtie2
   - muscle
-  - samtools=1.9
-  - multiqc=1.5
-  - pip=19.3.1
+  - samtools
+  - multiqc
+  - pip
   ## assembly
-  - spades=3.14.0-0
-  - unicycler=0.4.6
-  - quast=5.0.1
-  - blast=2.9.0-0
-  - abacas=1.3.1
-  - cd-hit=4.8.1
-  - circos=0.69.8
-  - gawk=5.0.1
-  - mash=2.2.1
-  - prokka=1.14
+  - spades
+  - unicycler
+  - quast
+  - blast
+  - abacas
+  - prokka
+  - cd-hit
+  - circos
+  - gawk
+  - mash
   - pip:
     - joblib==0.14.1
     - numpy==1.18.1

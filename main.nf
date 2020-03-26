@@ -539,7 +539,7 @@ process plasmidID_spades {
   publishDir path: { "${params.outdir}/12-plasmidID/SPADES" }, mode: 'copy'
 
   input:
-  file spades_scaffolds from spades_scaffold_plasmid
+  file spades_scaffolds from spades_scaffold_plasmid.filter{ it.size()>0 }
   file refvirus from viral_fasta_file
 
   output:
@@ -562,7 +562,7 @@ process plasmidID_metaspades {
   publishDir path: { "${params.outdir}/12-plasmidID/META_SPADES" }, mode: 'copy'
 
   input:
-  file meta_scaffolds from metas_pades_scaffold_plasmid
+  file meta_scaffolds from metas_pades_scaffold_plasmid.filter{ it.size()>0 }
   file refvirus from viral_fasta_file
 
   output:
@@ -585,7 +585,7 @@ process plasmidID_unicycler {
   publishDir path: { "${params.outdir}/12-plasmidID/UNICYCLER" }, mode: 'copy'
 
   input:
-  file unicycler_assembly from unicycler_assembly_plasmid
+  file unicycler_assembly from unicycler_assembly_plasmid.filter{ it.size()>0 }
   file refvirus from viral_fasta_file
 
   output:

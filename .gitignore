@@ -4,3 +4,4 @@ results/
 TMP/
 .nextflow*
 .nextflow/
+work/

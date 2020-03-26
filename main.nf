@@ -309,123 +309,113 @@ process mapping_host {
 	file '*_sorted.bam' into mapping_host_sorted_bam,mapping_host_sorted_bam_assembly
   file '*.bam.bai' into mapping_host_bai,mapping_host_bai_assembly
 	file '*_flagstat.txt' into mapping_host_flagstat
-	file '*.stats' into mapping_host_picardstats
 
 	script:
 	prefix = readsR1.toString() - '_paired_R1.fastq.gz'
 	"""
-	bwa mem -t ${task.cpus} $refhost $readsR1 $readsR2 > $prefix".sam"
-  samtools view -b $prefix".sam" > $prefix".bam"
-  samtools sort -o $prefix"_sorted.bam" -O bam -T $prefix $prefix".bam"
-  samtools index $prefix"_sorted.bam"
-  samtools flagstat $prefix"_sorted.bam" > $prefix"_flagstat.txt"
-  picard CollectWgsMetrics COVERAGE_CAP=1000000 I=$prefix"_sorted.bam" O=$prefix".stats" R=$refhost
+	bowtie2 -p ${task.cpus} --local --very-sensitive-local -x $refhost -1 $readsR1 -2 $readsR2 -S $prefix".sam"
+    samtools view -b $prefix".sam" > $prefix".bam"
+    samtools sort -o $prefix"_sorted.bam" -O bam -T $prefix $prefix".bam"
+    samtools index $prefix"_sorted.bam"
+    samtools flagstat $prefix"_sorted.bam" > $prefix"_flagstat.txt"
 	"""
 }
 
-//
-///*
-// * STEPS 4.1 Select unmapped host reads
-// */
-//process unmapped_host {
-//  tag "$prefix"
-//  publishDir "${params.outdir}/09-assembly", mode: 'copy',
-//    saveAs: {filename ->
-//      if (params.save_unmapped_host) "unmapped/$filename"
-//      else null
-//  }
-//
-//  input:
-//  file sorted_bam from mapping_host_sorted_bam_assembly
-//  file bam_bai from mapping_host_bai_assembly
-//
-//  output:
-//  file '*_unmapped.bam' into unmapped_host_bam
-//  file '*_unmapped_qsorted.bam' into unmapped_host_qsorted_bam
-//  file '*_unmapped.fastq' into unmapped_host_reads,unmapped_host_reads_spades,unmapped_host_reads_metaspades,unmapped_host_reads_unicycler
-//
-//  script:
-//  prefix = sorted_bam.baseName - ~/(_sorted)?(_paired)?(\.bam)?(\.gz)?$/
-//  """
-//  samtools view -b -f 4 $sorted_bam > $prefix"_unmapped.bam"
-//  samtools sort -n $prefix"_unmapped.bam" -o $prefix"_unmapped_qsorted.bam"
-//  bedtools bamtofastq -i $prefix"_unmapped_qsorted.bam" -fq $prefix"_R1_unmapped.fastq" -fq2 $prefix"_R2_unmapped.fastq"
-//  """
-//}
-//
-///*
-// * STEPS 4.2 De Novo Spades Assembly
-// */
-//process spades_assembly {
-//  tag "$prefix"
-//  publishDir path: { "${params.outdir}/09-assembly/spades" }, mode: 'copy'
-//
-//  cpus '10'
-//  penv 'openmp'
-//
-//  input:
-//  set file(readsR1),file(readsR2) from unmapped_host_reads_spades
-//
-//  output:
-//  file '*_scaffolds.fasta' into spades_scaffold,spades_scaffold_quast,spades_scaffold_abacas,spades_scaffold_blast,spades_scaffold_plasmid
-//
-//  script:
-//  prefix = readsR1.toString() - '_R1_unmapped.fastq'
-//  """
-//  spades.py -t 10 -1 $readsR1 -2 $readsR2 -o ./
-//  mv scaffolds.fasta $prefix"_scaffolds.fasta"
-//  """
-//}
-//
-///*
-// * STEPS 4.2 De Novo MetaSpades Assembly
-// */
-//process metaspades_assembly {
-//  tag "$prefix"
-//  publishDir path: { "${params.outdir}/09-assembly/metaspades" }, mode: 'copy'
-//
-//  cpus '10'
-//  penv 'openmp'
-//
-//  input:
-//  set file(readsR1),file(readsR2) from unmapped_host_reads_metaspades
-//
-//  output:
-//  file '*_meta_scaffolds.fasta' into metaspades_scaffold,metas_pades_scaffold_quast,metas_pades_scaffold_plasmid
-//
-//  script:
-//  prefix = readsR1.toString() - '_R1_unmapped.fastq'
-//  """
-//  spades.py -t 10 -1 $readsR1 -2 $readsR2 --meta -o ./
-//  mv scaffolds.fasta $prefix"_meta_scaffolds.fasta"
-//  """
-//}
-//
-//
-///*
-// * STEPS 4.3 De Novo Unicycler Assembly
-// */
-//process unicycler_assembly {
-//  tag "$prefix"
-//  publishDir path: { "${params.outdir}/09-assembly/unicycler" }, mode: 'copy'
-//
-//  cpus '10'
-//  penv 'openmp'
-//
-//  input:
-//  set file(readsR1),file(readsR2) from unmapped_host_reads_unicycler
-//
-//  output:
-//  file '*_assembly.fasta' into unicycler_assembly,unicycler_assembly_quast,unicycler_assembly_plasmid
-//
-//  script:
-//  prefix = readsR1.toString() - '_R1_unmapped.fastq'
-//  """
-//  unicycler -t 10 -o ./ -1 $readsR1 -2 $readsR2
-//  mv assembly.fasta $prefix"_assembly.fasta"
-//  """
-//}
-//
+
+/*
+ * STEPS 4.1 Select unmapped host reads
+ */
+process unmapped_host {
+  label "small"
+  tag "$prefix"
+  publishDir "${params.outdir}/09-assembly", mode: 'copy',
+    saveAs: {filename ->
+      if (params.save_unmapped_host) "unmapped/$filename"
+      else null
+  }
+
+  input:
+  file sorted_bam from mapping_host_sorted_bam_assembly
+  file bam_bai from mapping_host_bai_assembly
+
+  output:
+  file '*_unmapped.bam' into unmapped_host_bam
+  file '*_unmapped_qsorted.bam' into unmapped_host_qsorted_bam
+  file '*_unmapped.fastq' into unmapped_host_reads,unmapped_host_reads_spades,unmapped_host_reads_metaspades,unmapped_host_reads_unicycler
+
+  script:
+  prefix = sorted_bam.baseName - ~/(_sorted)?(_paired)?(\.bam)?(\.gz)?$/
+  """
+  samtools view -b -f 4 $sorted_bam > $prefix"_unmapped.bam"
+  samtools sort -n $prefix"_unmapped.bam" -o $prefix"_unmapped_qsorted.bam"
+  bedtools bamtofastq -i $prefix"_unmapped_qsorted.bam" -fq $prefix"_R1_unmapped.fastq" -fq2 $prefix"_R2_unmapped.fastq"
+  """
+}
+
+/*
+ * STEPS 4.2 De Novo Spades Assembly
+ */
+process spades_assembly {
+  tag "$prefix"
+  publishDir path: { "${params.outdir}/09-assembly/spades" }, mode: 'copy'
+
+  input:
+  set file(readsR1),file(readsR2) from unmapped_host_reads_spades
+
+  output:
+  file '*_scaffolds.fasta' into spades_scaffold,spades_scaffold_quast,spades_scaffold_abacas,spades_scaffold_blast,spades_scaffold_plasmid
+
+  script:
+  prefix = readsR1.toString() - '_R1_unmapped.fastq'
+  """
+  spades.py -t ${task.cpus} -1 $readsR1 -2 $readsR2 -o ./
+  mv scaffolds.fasta $prefix"_scaffolds.fasta"
+  """
+}
+
+/*
+ * STEPS 4.2 De Novo MetaSpades Assembly
+ */
+process metaspades_assembly {
+  tag "$prefix"
+  publishDir path: { "${params.outdir}/09-assembly/metaspades" }, mode: 'copy'
+
+  input:
+  set file(readsR1),file(readsR2) from unmapped_host_reads_metaspades
+
+  output:
+  file '*_meta_scaffolds.fasta' into metaspades_scaffold,metas_pades_scaffold_quast,metas_pades_scaffold_plasmid
+
+  script:
+  prefix = readsR1.toString() - '_R1_unmapped.fastq'
+  """
+  spades.py -t ${task.cpus} -1 $readsR1 -2 $readsR2 --meta -o ./
+  mv scaffolds.fasta $prefix"_meta_scaffolds.fasta"
+  """
+}
+
+
+/*
+ * STEPS 4.3 De Novo Unicycler Assembly
+ */
+process unicycler_assembly {
+  tag "$prefix"
+  publishDir path: { "${params.outdir}/09-assembly/unicycler" }, mode: 'copy'
+
+  input:
+  set file(readsR1),file(readsR2) from unmapped_host_reads_unicycler
+
+  output:
+  file '*_assembly.fasta' into unicycler_assembly,unicycler_assembly_quast,unicycler_assembly_plasmid
+
+  script:
+  prefix = readsR1.toString() - '_R1_unmapped.fastq'
+  """
+  unicycler -t ${task.cpus} -o ./ -1 $readsR1 -2 $readsR2
+  mv assembly.fasta $prefix"_assembly.fasta"
+  """
+}
+
 ///*
 // * STEPS 4.4 Spades Assembly Quast
 // */

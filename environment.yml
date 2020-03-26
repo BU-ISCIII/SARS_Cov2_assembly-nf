@@ -15,13 +15,6 @@ dependencies:
   - bwa=0.7.12
   - multiqc=1.5
   - pip=19.3.1
-  ## mapping
-  - ivar=1.1
-  - picard=2.18.27
-  - bcftools=1.9
-  - varscan=2.4.4-0
-  - snpeff
-  - bedtools=2.26.0
   ## assembly
   - spades=3.14.0-0
   - unicycler=0.4.6

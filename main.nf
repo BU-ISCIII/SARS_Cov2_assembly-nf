@@ -417,59 +417,55 @@ process unicycler_assembly {
   """
 }
 
-///*
-// * STEPS 4.4 Spades Assembly Quast
-// */
-//process spades_quast {
-//  tag "$prefix"
-//  publishDir path: { "${params.outdir}/09-assembly/" }, mode: 'copy'
-//
-//  cpus '10'
-//  penv 'openmp'
-//
-//  input:
-//  file scaffolds from spades_scaffold_quast.collect()
-//  file meta_scaffolds from metas_pades_scaffold_quast.collect()
-//  file refvirus from viral_fasta_file
-//  file viral_gff from gff_file
-//
-//  output:
-//  file "spades_quast" into spades_quast_resuts
-//	file "spades_quast/report.tsv" into spades_quast_resuts_multiqc
-//
-//  script:
-//  prefix = 'spades_quast'
-//  """
-//  quast.py --output-dir $prefix -R $refvirus -G $viral_gff -t 10 \$(find . -name "*_scaffolds.fasta" | tr '\n' ' ')
-//  """
-//}
-//
-///*
-// * STEPS 4.5 Unicycler Assembly Quast
-// */
-//process unicycler_quast {
-//  tag "$prefix"
-//  publishDir path: { "${params.outdir}/09-assembly/" }, mode: 'copy'
-//
-//  cpus '10'
-//  penv 'openmp'
-//
-//  input:
-//  file assemblies from unicycler_assembly_quast.collect()
-//  file refvirus from viral_fasta_file
-//  file viral_gff from gff_file
-//
-//  output:
-//  file "unicycler_quast" into unicycler_quast_resuts
-//	file "unicycler_quast/report.tsv" into unicycler_quast_resuts_multiqc
-//
-//  script:
-//  prefix = 'unicycler_quast'
-//  """
-//  quast.py --output-dir $prefix -R $refvirus -G $viral_gff -t 10 \$(find . -name "*_assembly.fasta" | tr '\n' ' ')
-//  """
-//}
-//
+/*
+ * STEPS 4.4 Spades Assembly Quast
+ */
+process spades_quast {
+  label "small"
+  tag "$prefix"
+  publishDir path: { "${params.outdir}/09-assembly/" }, mode: 'copy'
+
+  input:
+  file scaffolds from spades_scaffold_quast.collect()
+  file meta_scaffolds from metas_pades_scaffold_quast.collect()
+  file refvirus from viral_fasta_file
+  file viral_gff from gff_file
+
+  output:
+  file "spades_quast" into spades_quast_resuts
+	file "spades_quast/report.tsv" into spades_quast_resuts_multiqc
+
+  script:
+  prefix = 'spades_quast'
+  """
+  quast.py --output-dir $prefix -R $refvirus -G $viral_gff -t ${task.cpus} \$(find . -name "*_scaffolds.fasta" | tr '\n' ' ')
+  """
+}
+
+/*
+ * STEPS 4.5 Unicycler Assembly Quast
+ */
+process unicycler_quast {
+  label "small"
+  tag "$prefix"
+  publishDir path: { "${params.outdir}/09-assembly/" }, mode: 'copy'
+
+  input:
+  file assemblies from unicycler_assembly_quast.collect()
+  file refvirus from viral_fasta_file
+  file viral_gff from gff_file
+
+  output:
+  file "unicycler_quast" into unicycler_quast_resuts
+	file "unicycler_quast/report.tsv" into unicycler_quast_resuts_multiqc
+
+  script:
+  prefix = 'unicycler_quast'
+  """
+  quast.py --output-dir $prefix -R $refvirus -G $viral_gff -t ${task.cpus} \$(find . -name "*_assembly.fasta" | tr '\n' ' ')
+  """
+}
+
 ///*
 // * STEPS 4.6 ABACAS
 // */

@@ -2,10 +2,10 @@
 #   conda env create -f environment.yml
 name: virus_illumina_assembly
 channels:
+  - defaults
   - conda-forge
   - bioconda
   - hcc
-  - defaults
 dependencies:
   ## Common
   - fastqc

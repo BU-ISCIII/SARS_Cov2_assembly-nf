@@ -268,6 +268,8 @@ process trimming {
 			else null
 	}
 
+	when: ! params.amplicons_file
+
 	input:
 	set val(name), file(reads) from raw_reads_trimming
 
@@ -281,6 +283,40 @@ process trimming {
 	prefix = name - ~/(_S[0-9]{2})?(_L00[1-9])?(.R1)?(_1)?(_R1)?(_trimmed)?(_val_1)?(_00*)?(\.fq)?(\.fastq)?(\.gz)?$/
 	"""
 	trimmomatic PE -threads ${task.cpus} -phred33 $reads $prefix"_paired_R1.fastq" $prefix"_unpaired_R1.fastq" $prefix"_paired_R2.fastq" $prefix"_unpaired_R2.fastq" ILLUMINACLIP:${params.trimmomatic_adapters_file}:${params.trimmomatic_adapters_parameters} SLIDINGWINDOW:${params.trimmomatic_window_length}:${params.trimmomatic_window_value} MINLEN:${params.trimmomatic_mininum_length} 2> ${name}.log
+
+	gzip *.fastq
+	mkdir tmp
+	fastqc -t ${task.cpus} -dir tmp -q *_paired_*.fastq.gz
+    rm -rf tmp
+	"""
+}
+
+process trimming_primers {
+	label "small"
+	tag "$prefix"
+	publishDir "${params.outdir}/02-preprocessing", mode: 'copy',
+		saveAs: {filename ->
+			if (filename.indexOf("_fastqc") > 0) "../03-preprocQC/$filename"
+			else if (filename.indexOf(".log") > 0) "logs/$filename"
+      else if (params.saveTrimmed && filename.indexOf(".fastq.gz")) "trimmed/$filename"
+			else null
+	}
+
+	when: params.amplicons_file
+
+	input:
+	set val(name), file(reads) from raw_reads_trimming
+
+	output:
+	file '*_paired_*.fastq.gz' into trimmed_paired_reads,trimmed_paired_reads_bwa,trimmed_paired_reads_bwa_virus
+	file '*_unpaired_*.fastq.gz' into trimmed_unpaired_reads
+	file '*_fastqc.{zip,html}' into trimmomatic_fastqc_reports
+	file '*.log' into trimmomatic_results
+
+	script:
+	prefix = name - ~/(_S[0-9]{2})?(_L00[1-9])?(.R1)?(_1)?(_R1)?(_trimmed)?(_val_1)?(_00*)?(\.fq)?(\.fastq)?(\.gz)?$/
+	"""
+	trimmomatic PE -threads ${task.cpus} -phred33 $reads $prefix"_paired_R1.fastq" $prefix"_unpaired_R1.fastq" $prefix"_paired_R2.fastq" $prefix"_unpaired_R2.fastq" ILLUMINACLIP:${params.amplicons_file}:${params.trimmomatic_adapters_parameters} SLIDINGWINDOW:${params.trimmomatic_window_length}:${params.trimmomatic_window_value} MINLEN:${params.trimmomatic_mininum_length} 2> ${name}.log
 
 	gzip *.fastq
 	mkdir tmp

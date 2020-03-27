@@ -305,7 +305,7 @@ process trimming_primers {
 	when: params.amplicons_file
 
 	input:
-	set val(name), file(reads) from raw_reads_trimming
+	set val(name), file(reads) from raw_reads_trimming_primers
 
 	output:
 	file '*_paired_*.fastq.gz' into trimmed_paired_reads,trimmed_paired_reads_bwa,trimmed_paired_reads_bwa_virus

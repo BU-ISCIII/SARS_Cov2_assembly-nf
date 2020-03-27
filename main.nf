@@ -148,7 +148,7 @@ if ( ! params.viral_gff ){
 Channel
     .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
     .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nIf this is single-end data, please specify --singleEnd on the command line." }
-    .into { raw_reads_fastqc; raw_reads_trimming }
+    .into { raw_reads_fastqc; raw_reads_trimming; raw_reads_trimming_primers }
 
 // Create channel for reference index
 if( params.host_index ){

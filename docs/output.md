@@ -7,7 +7,6 @@
 * [BWA](#bwa) v0.7.12 - mapping against reference genome.
 * [SAMtools](#samtools) v1.2 - Alignment result processing and unmapped reads selection.
 * [Picard](#picard) v1.140 - Enrichment and alignment metrics.
-* [Bcftools](#bcftools) v1.9 - Variant calling and consensus genome
 * [SPADES](#spades) v3.7.1 - Viral genome assembly.
 * [QUAST](#quast) v4.1 - Assembly quality assessment.
 * [Blast](#blast) v2.6.0+ - Blast alignment.

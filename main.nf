@@ -63,6 +63,7 @@ def helpMessage() {
     Other options:
       --save_unmapped_host          Save the reads that didn't map to host genome
       --outdir                      The output directory where the results will be saved
+      --service_id					Service identifier for report generation.
     """.stripIndent()
 }
 

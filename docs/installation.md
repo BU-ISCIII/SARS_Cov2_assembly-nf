@@ -58,14 +58,5 @@ To create the environment you just have to run:
 ```
 conda env create -f environment.yml
 ```
-And the environment will be created in your machine with all the programs. ***NOTE: To run the pipeline with SARS-Cov2 data you will have to do the following steps to set snpEff SARS-Cov2 database:***
-```
-cd /path/to/your/miniconda3/envs/virus_illumina/share/snpeff-4.3.1t-3 ##Run all the following commands in this folder
-vim SnpEff.config ## Add new genome entry.
-  sars-cov-2.genome : SARScov2
-mkdir -p data/genomes
-mkdir -p data/sars-cov-2
-cp /path/to/reference/fasta/GCF_009858895.2_ASM985889v3_genomic.fna data/genomes/sars-cov-2.fa
-cp /path/to/reference/fasta/GCF_009858895.2_ASM985889v3_genomic.gff data/data/sars-cov-2/genes.gff
-java -jar snpEff.jar build -gff3 -v sars-cov-2
-```
+And the environment will be created in your machine with all the programs.
+

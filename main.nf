@@ -643,3 +643,60 @@ process plasmidID_unicycler {
   mv NO_GROUP/$prefix ./$prefix
   """
 }
+
+/*
+ * STEP 4.1 MultiQC
+ */
+process multiqc {
+	tag "$prefix"
+    publishDir path: { "${params.outdir}/99-stats/MultiQC" }, mode: 'copy'
+
+    input:
+    file multiqc_config from multiqc_config
+    file (fastqc:'fastqc/*') from fastqc_results.collect().ifEmpty([])
+    file ('trimommatic/*') from trimmomatic_results.collect()
+    file ('trimommatic/*') from trimmomatic_fastqc_reports.collect()
+    file ('mappinh_host/*') from mapping_host_flagstat.collect()
+    file ('mappinh_host/*') from mapping_host_picardstats.collect()
+    file ('quast_unicycler/*') from unicycler_quast_resuts_multiqc.collect()
+    file ('quast_spades/*') from spades_quast_resuts_multiqc.collect()
+
+    output:
+    file '*multiqc_report.html' into multiqc_report
+    file '*_data' into multiqc_data
+    val prefix into multiqc_prefix
+
+    script:
+    prefix = fastqc[0].toString() - '_fastqc.html' - 'fastqc/'
+
+    """
+    multiqc -d . --config $multiqc_config
+    """
+}
+
+/*
+ * STEP 5 - Output Description HTML
+ */
+process output_documentation {
+    publishDir "$doc_output", mode: 'copy'
+
+    input:
+    file output_docs from ch_output_docs
+
+    output:
+    file "results_description.html"
+    file "*.pdf"
+
+    script:
+    if (params.service_id) {
+      """
+      markdown_to_html.r $output_docs results_description.html
+      wkhtmltopdf --keep-relative-links results_description.html INFRES_${params.service_id}.pdf
+      """
+    } else{
+      """
+      markdown_to_html.r $output_docs results_description.html
+      wkhtmltopdf --keep-relative-links results_description.html INFRES.pdf
+      """
+    }
+}

@@ -116,8 +116,20 @@ if( params.viral_gff ){
 blast_header = file("$baseDir/assets/header_blast.txt")
 
 // Output md template location
-output_docs = file("$baseDir/docs/output.md")
 
+params.multiqc_config = "${baseDir}/conf/multiqc_config.yaml"
+
+if (params.multiqc_config){
+    multiqc_config = file(params.multiqc_config)
+}
+
+params.doc_output = "${params.outdir}/../DOC/"
+
+if (params.doc_output){
+    doc_output = params.doc_output
+}
+
+ch_output_docs = Channel.fromPath("$baseDir/docs/output.md")
 // Trimming
 // Trimming default
 params.notrim = false
@@ -561,6 +573,7 @@ process blast {
 
   input:
   file scaffolds from spades_scaffold_blast
+  file refvirus from viral_fasta_file
   file blast_db from blast_db_files.collect()
   file header from blast_header
 
@@ -569,9 +582,8 @@ process blast {
 
   script:
   prefix = scaffolds.baseName - ~/(_scaffolds)?(_paired)?(\.fasta)?(\.gz)?$/
-  database = blast_db[1].toString() - ~/(\.ann)?$/
   """
-  blastn -num_threads ${task.cpus} -db $database -query $scaffolds -outfmt \'6 stitle std slen qlen qcovs\' -out $prefix"_blast.txt"
+  blastn -num_threads ${task.cpus} -db $refvirus -query $scaffolds -outfmt \'6 stitle std slen qlen qcovs\' -out $prefix"_blast.txt"
   awk 'BEGIN{OFS=\"\\t\";FS=\"\\t\"}{print \$0,\$5/\$15,\$5/\$14}' $prefix"_blast.txt" | awk 'BEGIN{OFS=\"\\t\";FS=\"\\t\"} \$15 > 200 && \$17 > 0.7 && \$1 !~ /phage/ {print \$0}' > $prefix"_blast_filt.txt"; cat $header $prefix"_blast_filt.txt" > $prefix"_blast_filt_header.txt"
   """
 }
@@ -657,8 +669,7 @@ process multiqc {
     file (fastqc:'fastqc/*') from fastqc_results.collect().ifEmpty([])
     file ('trimommatic/*') from trimmomatic_results.collect()
     file ('trimommatic/*') from trimmomatic_fastqc_reports.collect()
-    file ('mappinh_host/*') from mapping_host_flagstat.collect()
-    file ('mappinh_host/*') from mapping_host_picardstats.collect()
+    file ('mapping_host/*') from mapping_host_flagstat.collect()
     file ('quast_unicycler/*') from unicycler_quast_resuts_multiqc.collect()
     file ('quast_spades/*') from spades_quast_resuts_multiqc.collect()
 
@@ -678,26 +689,26 @@ process multiqc {
 /*
  * STEP 5 - Output Description HTML
  */
-process output_documentation {
-    publishDir "$doc_output", mode: 'copy'
-
-    input:
-    file output_docs from ch_output_docs
-
-    output:
-    file "results_description.html"
-    file "*.pdf"
-
-    script:
-    if (params.service_id) {
-      """
-      markdown_to_html.r $output_docs results_description.html
-      wkhtmltopdf --keep-relative-links results_description.html INFRES_${params.service_id}.pdf
-      """
-    } else{
-      """
-      markdown_to_html.r $output_docs results_description.html
-      wkhtmltopdf --keep-relative-links results_description.html INFRES.pdf
-      """
-    }
-}
+//process output_documentation {
+//    publishDir "$doc_output", mode: 'copy'
+//
+//    input:
+//    file output_docs from ch_output_docs
+//
+//    output:
+//    file "results_description.html"
+//    file "*.pdf"
+//
+//    script:
+//    if (params.service_id) {
+//      """
+//      markdown_to_html.r $output_docs results_description.html
+//      wkhtmltopdf --keep-relative-links results_description.html INFRES_${params.service_id}.pdf
+//      """
+//    } else{
+//      """
+//      markdown_to_html.r $output_docs results_description.html
+//      wkhtmltopdf --keep-relative-links results_description.html INFRES.pdf
+//      """
+//    }
+//}
